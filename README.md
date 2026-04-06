@@ -1,11 +1,12 @@
 # Kotlin Swift Export Example
 
-`shared` モジュールに Kotlin 実装を置き、Swift export で Swift から直接利用するためのサンプルです。Swift 側は `iosApp` の最小 SwiftUI アプリで、Swift から直接触れる API だけを呼び出し、その結果を画面上に表示します。
+`shared` モジュールに Kotlin 実装を置き、Swift export で Swift から直接利用するためのサンプルです。加えて、同じ Kotlin 定義を Objective-C interop の framework として出力する `sharedObjc` も用意し、Swift 側で両者を比較できるようにしています。
 
 ## 構成
 
 - `shared`: Swift export 対象の Kotlin Multiplatform モジュール
-- `iosApp`: `embedSwiftExportForXcode` を使って `Shared` モジュールを取り込む最小 Xcode プロジェクト
+- `sharedObjc`: 同じ Kotlin ソースを traditional Objective-C interop framework として公開する比較用モジュール
+- `iosApp`: `Shared` と `SharedObjc` の両方を取り込む最小 Xcode プロジェクト
 
 ## 公式 Mapping の対応
 
@@ -35,6 +36,9 @@
 | `ULong` | `PrimitiveMappings.uLongValue` |
 | `Float` | `PrimitiveMappings.floatValue` |
 | `Double` | `PrimitiveMappings.doubleValue` |
+| `List` | `makeStringList`, `summarizeList` |
+| `Map` | `makeScoreMap`, `summarizeMap` |
+| `Set` | `makeTagSet`, `summarizeSet` |
 | `Any` | `acceptAny`, `identityAny` |
 | `Unit` | `returnsUnit` |
 | `Nothing` | `alwaysFails`, `impossibleInput` |
@@ -54,9 +58,29 @@ Coroutines 系の実装も `CoroutineMappings` に含めています。
 
 1. Xcode で [iosApp/iosApp.xcodeproj](/Users/yt8492/IdeaProjects/KotlinSwiftExportExample/iosApp/iosApp.xcodeproj) を開きます。
 2. `iosApp` ターゲットを選びます。
-3. Build Phase の Run Script では、すでに `./gradlew :shared:embedSwiftExportForXcode` を実行する設定にしています。
+3. Build Phase の Run Script では、すでに `./gradlew :shared:embedSwiftExportForXcode :sharedObjc:embedAndSignAppleFrameworkForXcode` を実行する設定にしています。
 4. ビルドして起動します。
-5. SwiftUI のリスト上に、Swift から直接呼び出した結果が表示されます。
+5. SwiftUI のリスト上に、Swift export と Objective-C interop の呼び出し結果が並んで表示されます。
+
+## Objective-C Interop との比較
+
+`sharedObjc` は [shared/src/commonMain/kotlin](/Users/yt8492/IdeaProjects/KotlinSwiftExportExample/shared/src/commonMain/kotlin) をそのまま再利用し、traditional Kotlin/Native framework `SharedObjc.framework` として公開しています。
+
+Swift 側で見える主な差は次の通りです。
+
+| 項目 | Swift export (`Shared`) | Objective-C interop (`SharedObjc`) |
+| --- | --- | --- |
+| package の見え方 | `alpha.callMeMaybe()`, `beta.callMeMaybe()` のように package namespace が残る | top-level holder に潰れ、`PackageMappingsKt.callMeMaybe()` と `callMeMaybe_()` のように衝突回避名が付く |
+| `enum class` | Swift enum として export され、通常の `switch` ができる | enum class ではなく class singleton 群として見えるので、`===` などで比較する |
+| `sealed class` | nested class に型変換して分岐する | `SharedObjc.ApiResult.Success` などに `as` して分岐する |
+| `sealed interface` | protocol + 一部 internal alias になり、具体型名を直接使う必要がある場合がある | `SharedObjc.DeviceStateOnline` などの public class でそのまま型判定できる |
+| `suspend fun` | 今回の生成物では直接 `await` できず、`blockingGreeting(...)` を使う | completion handler 付きメソッドとして出るので、Swift 側で continuation で async 化できる |
+
+実際の比較コードは [ContentView.swift](/Users/yt8492/IdeaProjects/KotlinSwiftExportExample/iosApp/iosApp/ContentView.swift) の `Objective-C Interop` セクションに追加しています。
+
+補足:
+- Objective-C interop の generated header では `SharedObjcMappingsKt` のような Objective-C 名が出ますが、Swift importer 上では `SharedObjc.MappingsKt` / `SharedObjc.PackageMappingsKt` / `SharedObjc.Person` のような `swift_name` 済みの名前で見えます。
+- `Shared` と `SharedObjc` を同じアプリに同時リンクすると Kotlin runtime の duplicate symbol 警告が多数出ます。今回のサンプルではビルド成功まで確認できていますが、比較用の構成だと理解してください。
 
 ## Swift から直接呼べなかったもの
 

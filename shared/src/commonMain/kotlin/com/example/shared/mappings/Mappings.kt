@@ -126,6 +126,21 @@ fun acceptAny(value: Any): String = "${value::class.simpleName}:$value"
 
 fun identityAny(value: Any): Any = value
 
+fun makeStringList(): List<String> = listOf("alpha", "beta", "gamma")
+
+fun summarizeList(values: List<String>): String =
+    "List(size=${values.size}, values=${values.joinToString(separator = ", ")})"
+
+fun makeScoreMap(): Map<String, Int> = linkedMapOf("apple" to 1, "banana" to 2, "citrus" to 3)
+
+fun summarizeMap(values: Map<String, Int>): String =
+    values.entries.joinToString(prefix = "Map(", postfix = ")") { "${it.key}=${it.value}" }
+
+fun makeTagSet(): Set<String> = linkedSetOf("kotlin", "swift", "interop")
+
+fun summarizeSet(values: Set<String>): String =
+    "Set(size=${values.size}, values=${values.sorted().joinToString(separator = ", ")})"
+
 fun returnsUnit(message: String) {
     exportedCounter += message.length
 }
@@ -163,3 +178,5 @@ fun alwaysFails(): Nothing = error("Nothing mapping sample")
 fun impossibleInput(input: Nothing) {
     error("Unreachable: $input")
 }
+
+open class Foog

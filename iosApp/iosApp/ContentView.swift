@@ -1,5 +1,6 @@
 import SwiftUI
 import Shared
+import SharedObjc
 
 private struct DemoEntry: Identifiable {
     let id = UUID()
@@ -71,7 +72,18 @@ struct ContentView: View {
         let coroutineMappings = SharedMappings.CoroutineMappings()
         let apiResult = SharedMappings.sampleApiResult(success: true)
         let deviceState = SharedMappings.sampleDeviceState(state: 1)
+        let stringList = SharedMappings.makeStringList()
+        let scoreMap = SharedMappings.makeScoreMap()
+        let tagSet = SharedMappings.makeTagSet()
         let asyncGreeting = await callBlockingGreeting(coroutineMappings)
+        let objcCoroutineMappings = SharedObjc.CoroutineMappings()
+        let objcApiResult = SharedObjc.MappingsKt.sampleApiResult(success: true)
+        let objcDeviceState = SharedObjc.MappingsKt.sampleDeviceState(state: 1)
+        let objcSuspendGreeting = try await callObjcSuspendDemo(objcCoroutineMappings)
+        let objcStringList = SharedObjc.MappingsKt.makeStringList()
+        objcStringList
+        let objcScoreMap = SharedObjc.MappingsKt.makeScoreMap()
+        let objcTagSet = SharedObjc.MappingsKt.makeTagSet()
 
         SharedMappings.returnsUnit(message: "swiftui")
 
@@ -106,6 +118,15 @@ struct ContentView: View {
             DemoEntry(title: "PrimitiveMappings.optionalLong", value: String(describing: primitiveMappings.optionalLong)),
         ]
 
+        let collectionEntries = [
+            DemoEntry(title: "makeStringList()", value: describeSwiftList(stringList)),
+            DemoEntry(title: "summarizeList([\"delta\", \"echo\"])", value: SharedMappings.summarizeList(values: ["delta", "echo"])),
+            DemoEntry(title: "makeScoreMap()", value: describeSwiftMap(scoreMap)),
+            DemoEntry(title: "summarizeMap([\"kiwi\": 4, \"melon\": 5])", value: SharedMappings.summarizeMap(values: ["kiwi": 4, "melon": 5])),
+            DemoEntry(title: "makeTagSet()", value: describeSwiftSet(tagSet)),
+            DemoEntry(title: "summarizeSet([\"ios\", \"kmp\"])", value: SharedMappings.summarizeSet(values: Set(["ios", "kmp"]))),
+        ]
+
         let sealedEntries = [
             DemoEntry(title: "describeApiResult(sampleApiResult(true))", value: SharedMappings.describeApiResult(result: apiResult)),
             DemoEntry(title: "describeDeviceState(sampleDeviceState(1))", value: SharedMappings.describeDeviceState(state: deviceState)),
@@ -122,12 +143,32 @@ struct ContentView: View {
             DemoEntry(title: "Task.detached + blockingGreeting(...)", value: asyncGreeting),
         ]
 
+        let objcEntries = [
+            DemoEntry(title: "PackageMappingsKt.callMeMaybe()", value: SharedObjc.PackageMappingsKt.callMeMaybe()),
+            DemoEntry(title: "PackageMappingsKt.callMeMaybe_()", value: SharedObjc.PackageMappingsKt.callMeMaybe_()),
+            DemoEntry(title: "MappingsKt.exportedMessage", value: SharedObjc.MappingsKt.exportedMessage),
+            DemoEntry(title: "BuildMetadata.shared.banner()", value: SharedObjc.BuildMetadata.shared.banner()),
+            DemoEntry(title: "Person(name:age:).label()", value: SharedObjc.Person(name: "SwiftUI", age: 1).label()),
+            DemoEntry(title: "makeStringList()", value: describeObjcList(objcStringList)),
+            DemoEntry(title: "makeScoreMap()", value: describeObjcMap(objcScoreMap)),
+            DemoEntry(title: "makeTagSet()", value: describeObjcSet(objcTagSet)),
+            DemoEntry(title: "if color === .green", value: describeObjcColor(SharedObjc.SampleColor.green)),
+            DemoEntry(title: "switch ApiResult by type", value: describeObjcApiResult(objcApiResult)),
+            DemoEntry(title: "switch DeviceState by type", value: describeObjcDeviceState(objcDeviceState)),
+            DemoEntry(title: "suspend via completionHandler", value: objcSuspendGreeting),
+            DemoEntry(title: "blockingGreeting(name:)", value: objcCoroutineMappings.blockingGreeting(name: "Objective-C caller")),
+        ]
+        SharedMappings.Foo()
+        
+
         return [
             DemoSection(title: "Basic", entries: basicEntries),
             DemoSection(title: "Classes and Functions", entries: classEntries),
             DemoSection(title: "Primitive Mappings", entries: primitiveEntries),
+            DemoSection(title: "Collections", entries: collectionEntries),
             DemoSection(title: "Sealed Types", entries: sealedEntries),
             DemoSection(title: "Coroutines", entries: coroutineEntries),
+            DemoSection(title: "Objective-C Interop", entries: objcEntries),
         ]
     }
 
@@ -135,6 +176,19 @@ struct ContentView: View {
         await Task.detached(priority: .userInitiated) {
             coroutineMappings.blockingGreeting(name: "Swift async caller")
         }.value
+    }
+
+    private func callObjcSuspendDemo(_ coroutineMappings: SharedObjc.CoroutineMappings) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            coroutineMappings.delayedGreeting(name: "Objective-C suspend caller") { value, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                continuation.resume(returning: value ?? "nil")
+            }
+        }
     }
 
     private func describeColorWithSwitch(_ color: SharedMappings.SampleColor) -> String {
@@ -145,8 +199,8 @@ struct ContentView: View {
             return "GREEN -> \(color.rgb)"
         case .BLUE:
             return "BLUE -> \(color.rgb)"
-        @unknown default:
-            return "unknown enum case"
+//        @unknown default:
+//            return "unknown enum case"
         }
     }
 
@@ -170,6 +224,73 @@ struct ContentView: View {
         case let offline as Shared._ExportedKotlinPackages_com_example_shared_mappings_DeviceState_Offline:
             return "Offline(lastSeenMinutesAgo: \(offline.lastSeenMinutesAgo))"
         case is Shared._ExportedKotlinPackages_com_example_shared_mappings_DeviceState_Unknown:
+            return "Unknown"
+        default:
+            return "Unknown DeviceState subtype"
+        }
+    }
+
+    private func describeSwiftList(_ values: [String]) -> String {
+        "Array(count: \(values.count), values: \(values.joined(separator: ", ")))"
+    }
+
+    private func describeSwiftMap(_ values: [String: Int32]) -> String {
+        let pairs = values.keys.sorted().map { "\($0)=\(values[$0]!)" }.joined(separator: ", ")
+        return "Dictionary(count: \(values.count), values: \(pairs))"
+    }
+
+    private func describeSwiftSet(_ values: Set<String>) -> String {
+        "Set(count: \(values.count), values: \(values.sorted().joined(separator: ", ")))"
+    }
+
+    private func describeObjcList(_ values: Any) -> String {
+        String(describing: values)
+    }
+
+    private func describeObjcMap(_ values: Any) -> String {
+        String(describing: values)
+    }
+
+    private func describeObjcSet(_ values: Any) -> String {
+        String(describing: values)
+    }
+
+    private func describeObjcColor(_ color: SharedObjc.SampleColor) -> String {
+        if color === SharedObjc.SampleColor.red {
+            return "red -> \(color.rgb)"
+        }
+
+        if color === SharedObjc.SampleColor.green {
+            return "green -> \(color.rgb)"
+        }
+
+        if color === SharedObjc.SampleColor.blue {
+            return "blue -> \(color.rgb)"
+        }
+
+        return "unknown color instance"
+    }
+
+    private func describeObjcApiResult(_ result: SharedObjc.ApiResult) -> String {
+        switch result {
+        case let success as SharedObjc.ApiResult.Success:
+            return "Success(message: \(success.message))"
+        case let failure as SharedObjc.ApiResult.Failure:
+            return "Failure(code: \(failure.code), reason: \(failure.reason))"
+        case is SharedObjc.ApiResult.Loading:
+            return "Loading"
+        default:
+            return "Unknown ApiResult subtype"
+        }
+    }
+
+    private func describeObjcDeviceState(_ state: any SharedObjc.DeviceState) -> String {
+        switch state {
+        case let online as SharedObjc.DeviceStateOnline:
+            return "Online(deviceName: \(online.deviceName))"
+        case let offline as SharedObjc.DeviceStateOffline:
+            return "Offline(lastSeenMinutesAgo: \(offline.lastSeenMinutesAgo))"
+        case is SharedObjc.DeviceStateUnknown:
             return "Unknown"
         default:
             return "Unknown DeviceState subtype"
