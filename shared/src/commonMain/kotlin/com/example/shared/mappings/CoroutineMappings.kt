@@ -12,14 +12,14 @@ class CoroutineMappings {
         return "Hello, $name"
     }
 
-    fun countdownFlow(start: Int): Flow<Int> = flow {
+    internal fun countdownFlow(start: Int): Flow<Int> = flow {
         for (value in start downTo 1) {
             delay(10)
             emit(value)
         }
     }
 
-    fun tickerFlow(prefix: String, count: Int): Flow<String> = flow {
+    internal fun tickerFlow(prefix: String, count: Int): Flow<String> = flow {
         repeat(count) { index ->
             delay(10)
             emit("$prefix-${index + 1}")
@@ -37,4 +37,7 @@ class CoroutineMappings {
     fun blockingTicker(prefix: String, count: Int): String = runBlocking {
         tickerFlow(prefix, count).toList().joinToString(prefix = "[", postfix = "]")
     }
+
+    fun describeCoroutineUsage(): String =
+        "shared module internally uses suspend and Flow, and exports blocking wrappers for Swift."
 }

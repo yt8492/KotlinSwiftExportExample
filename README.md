@@ -39,13 +39,14 @@
 
 ## Coroutines
 
-Coroutines 系の API も `CoroutineMappings` に含めています。
+Coroutines 系の実装も `CoroutineMappings` に含めています。
 
-- `suspend fun delayedGreeting(name: String): String`
-- `fun countdownFlow(start: Int): Flow<Int>`
-- `fun tickerFlow(prefix: String, count: Int): Flow<String>`
+- internal `suspend fun delayedGreeting(name: String): String`
+- internal `fun countdownFlow(start: Int): Flow<Int>`
+- internal `fun tickerFlow(prefix: String, count: Int): Flow<String>`
+- public `blockingGreeting`, `blockingCountdown`, `blockingTicker`
 
-Swift 側のサンプルでは追いやすさを優先して、上記の生 API に加えて `runBlocking` ベースの同期ラッパーも利用しています。
+`shared` モジュール内では `suspend` と `Flow` を実際に使っていますが、2026-04-06 時点では Swift export 側の coroutines / flows サポートがまだ不安定です。そこでこのサンプルでは、Swift から確実にビルド・実行できるよう public API は `runBlocking` ベースの同期ラッパーにしています。
 
 ## 実行方法
 
@@ -57,7 +58,7 @@ Swift 側のサンプルでは追いやすさを優先して、上記の生 API 
 
 ## 制限メモ
 
-2026-04-02 時点の公式ドキュメントでは、Swift export は Experimental で、`suspend` / `inline` / `operator` のサポートはまだ限定的です。そのためこのサンプルでは生の coroutine API を残しつつ、Swift から確実に追えるよう同期ラッパーも併設しています。
+2026-04-06 時点の公式ドキュメントでは、Swift export は Experimental で、`suspend` のサポートは限定的で、coroutines / flows まわりは今後改善予定とされています。そのためこのサンプルでは、`shared` 内部実装に coroutines / `Flow` を含めつつ、Swift から使う exported API は安定側に寄せています。
 
 ### 参考
 

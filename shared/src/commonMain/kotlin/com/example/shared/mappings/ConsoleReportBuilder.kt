@@ -41,7 +41,7 @@ class ConsoleReportBuilder {
             appendLine("suspend -> ${coroutines.blockingGreeting("Swift")}")
             appendLine("Flow<Int> -> ${coroutines.blockingCountdown(3)}")
             appendLine("Flow<String> -> ${coroutines.blockingTicker("tick", 3)}")
-            appendLine("Raw coroutine APIs are also exported: delayedGreeting, countdownFlow, tickerFlow")
+            appendLine(coroutines.describeCoroutineUsage())
         }
     }
 }
