@@ -33,6 +33,8 @@ class ConsoleReportBuilder {
             appendLine("Any -> ${acceptAny(anyValue)}")
             appendLine("Unit -> counter=$exportedCounter")
             appendLine("Nothing -> alwaysFails() is declared but intentionally not invoked")
+            appendLine("sealed class -> ${describeApiResult(sampleApiResult(success = true))}")
+            appendLine("sealed interface -> ${describeDeviceState(sampleDeviceState(state = 1))}")
             appendLine()
             appendLine("== Primitive Mappings ==")
             appendLine(primitives.summary())

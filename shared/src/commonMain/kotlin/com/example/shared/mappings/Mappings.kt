@@ -21,6 +21,30 @@ object BuildMetadata {
     fun banner(): String = "BuildMetadata(version=$version, owner=$owner)"
 }
 
+sealed class ApiResult {
+    data class Success(val message: String) : ApiResult()
+
+    data class Failure(val code: Int, val reason: String) : ApiResult()
+
+    data object Loading : ApiResult()
+}
+
+sealed interface DeviceState {
+    val label: String
+
+    data class Online(val deviceName: String) : DeviceState {
+        override val label: String = "online:$deviceName"
+    }
+
+    data class Offline(val lastSeenMinutesAgo: Int) : DeviceState {
+        override val label: String = "offline:${lastSeenMinutesAgo}m"
+    }
+
+    data object Unknown : DeviceState {
+        override val label: String = "unknown"
+    }
+}
+
 class PrimitiveMappings(
     val booleanValue: Boolean,
     val charValue: Char,
@@ -105,6 +129,34 @@ fun identityAny(value: Any): Any = value
 fun returnsUnit(message: String) {
     exportedCounter += message.length
 }
+
+fun sampleApiResult(success: Boolean): ApiResult =
+    if (success) {
+        ApiResult.Success(message = "export ok")
+    } else {
+        ApiResult.Failure(code = 500, reason = "sample failure")
+    }
+
+fun sampleDeviceState(state: Int): DeviceState =
+    when (state) {
+        0 -> DeviceState.Unknown
+        1 -> DeviceState.Online(deviceName = "iPhone")
+        else -> DeviceState.Offline(lastSeenMinutesAgo = 15)
+    }
+
+fun describeApiResult(result: ApiResult): String =
+    when (result) {
+        is ApiResult.Success -> "Success(message=${result.message})"
+        is ApiResult.Failure -> "Failure(code=${result.code}, reason=${result.reason})"
+        ApiResult.Loading -> "Loading"
+    }
+
+fun describeDeviceState(state: DeviceState): String =
+    when (state) {
+        is DeviceState.Online -> "Online(deviceName=${state.deviceName})"
+        is DeviceState.Offline -> "Offline(lastSeenMinutesAgo=${state.lastSeenMinutesAgo})"
+        DeviceState.Unknown -> "Unknown"
+    }
 
 fun alwaysFails(): Nothing = error("Nothing mapping sample")
 
